@@ -7,7 +7,8 @@ import {
     isFunction,
     isStringish,
     createDecoratorAnnotation,
-    createActionAnnotation
+    createActionAnnotation,
+    is20223Decorator
 } from "../internal"
 
 export const ACTION = "action"
@@ -51,6 +52,11 @@ function createActionFactory(autoAction: boolean): IActionFactory {
         // action("name", fn() {})
         if (isFunction(arg2)) {
             return createAction(arg1, arg2, autoAction)
+        }
+        // @action (2022.3 Decorators)
+        if (is20223Decorator(arg2)) {
+            ;(autoAction ? autoActionAnnotation : actionAnnotation).decorate_20223_(arg1, arg2)
+            return
         }
         // @action
         if (isStringish(arg2)) {

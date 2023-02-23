@@ -7,7 +7,10 @@ import {
     isFunction,
     Annotation,
     globalState,
-    MakeResult
+    MakeResult,
+    assert20223DecoratorType,
+    asObservableObject,
+    $mobx
 } from "../internal"
 
 export function createActionAnnotation(name: string, options?: object): Annotation {
@@ -15,11 +18,13 @@ export function createActionAnnotation(name: string, options?: object): Annotati
         annotationType_: name,
         options_: options,
         make_,
-        extend_
+        extend_,
+        decorate_20223_
     }
 }
 
 function make_(
+    this: Annotation,
     adm: ObservableObjectAdministration,
     key: PropertyKey,
     descriptor: PropertyDescriptor,
@@ -49,6 +54,7 @@ function make_(
 }
 
 function extend_(
+    this: Annotation,
     adm: ObservableObjectAdministration,
     key: PropertyKey,
     descriptor: PropertyDescriptor,
@@ -56,6 +62,27 @@ function extend_(
 ): boolean | null {
     const actionDescriptor = createActionDescriptor(adm, this, key, descriptor)
     return adm.defineProperty_(key, actionDescriptor, proxyTrap)
+}
+
+function decorate_20223_(this: Annotation, mthd, context: ClassMethodDecoratorContext) {
+    assert20223DecoratorType(context, ["method"])
+    const { name, addInitializer } = context
+
+    if (this.options_?.bound) {
+        addInitializer(function () {
+            const adm: ObservableObjectAdministration = asObservableObject(this)[$mobx]
+            const target = adm.proxy_ ?? adm.target_
+            const bound = target[name].bind(target)
+            bound.isMobxAction = true
+            target[name] = bound
+        })
+    }
+
+    return createAction(
+        this.options_?.name ?? name.toString(),
+        mthd,
+        this.options_?.autoAction ?? false
+    )
 }
 
 function assertActionDescriptor(

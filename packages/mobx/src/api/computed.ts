@@ -10,7 +10,8 @@ import {
     die,
     IComputedValue,
     createComputedAnnotation,
-    comparer
+    comparer,
+    is20223Decorator
 } from "../internal"
 
 export const COMPUTED = "computed"
@@ -35,6 +36,11 @@ const computedStructAnnotation = createComputedAnnotation(COMPUTED_STRUCT, {
  * For legacy purposes also invokable as ES5 observable created: `computed(() => expr)`;
  */
 export const computed: IComputedFactory = function computed(arg1, arg2) {
+    if (is20223Decorator(arg2)) {
+        // @computed (2022.3 Decorators)
+        computedAnnotation.decorate_20223_(arg1, arg2)
+        return
+    }
     if (isStringish(arg2)) {
         // @computed
         return storeAnnotation(arg1, arg2, computedAnnotation)

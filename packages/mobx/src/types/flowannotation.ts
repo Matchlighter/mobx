@@ -8,7 +8,10 @@ import {
     isFunction,
     globalState,
     MakeResult,
-    hasProp
+    hasProp,
+    assert20223DecoratorType,
+    asObservableObject,
+    $mobx
 } from "../internal"
 
 export function createFlowAnnotation(name: string, options?: object): Annotation {
@@ -16,11 +19,13 @@ export function createFlowAnnotation(name: string, options?: object): Annotation
         annotationType_: name,
         options_: options,
         make_,
-        extend_
+        extend_,
+        decorate_20223_
     }
 }
 
 function make_(
+    this: Annotation,
     adm: ObservableObjectAdministration,
     key: PropertyKey,
     descriptor: PropertyDescriptor,
@@ -50,6 +55,7 @@ function make_(
 }
 
 function extend_(
+    this: Annotation,
     adm: ObservableObjectAdministration,
     key: PropertyKey,
     descriptor: PropertyDescriptor,
@@ -57,6 +63,27 @@ function extend_(
 ): boolean | null {
     const flowDescriptor = createFlowDescriptor(adm, this, key, descriptor, this.options_?.bound)
     return adm.defineProperty_(key, flowDescriptor, proxyTrap)
+}
+
+function decorate_20223_(this: Annotation, mthd, context: ClassMethodDecoratorContext) {
+    assert20223DecoratorType(context, ["method"])
+    const { name, addInitializer } = context
+
+    if (!isFlow(mthd)) {
+        mthd = flow(mthd)
+    }
+
+    if (this.options_?.bound) {
+        addInitializer(function () {
+            const adm: ObservableObjectAdministration = asObservableObject(this)[$mobx]
+            const target = adm.proxy_ ?? adm.target_
+            const bound = target[name].bind(target)
+            bound.isMobXFlow = true
+            target[name] = bound
+        })
+    }
+
+    return mthd
 }
 
 function assertFlowDescriptor(

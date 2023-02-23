@@ -9,7 +9,11 @@ export const storedAnnotationsSymbol = Symbol("mobx-stored-annotations")
  */
 export function createDecoratorAnnotation(annotation: Annotation): PropertyDecorator & Annotation {
     function decorator(target, property) {
-        storeAnnotation(target, property, annotation)
+        if (is20223Decorator(property)) {
+            annotation.decorate_20223_(target, property)
+        } else {
+            storeAnnotation(target, property, annotation)
+        }
     }
     return Object.assign(decorator, annotation)
 }
@@ -70,4 +74,19 @@ export function collectStoredAnnotations(target): AnnotationsMap<any, any> {
         addHiddenProp(target, storedAnnotationsSymbol, { ...target[storedAnnotationsSymbol] })
     }
     return target[storedAnnotationsSymbol]
+}
+
+export function is20223Decorator(context): context is DecoratorContext {
+    return "kind" in context
+}
+
+export function assert20223DecoratorType(
+    context: DecoratorContext,
+    types: DecoratorContext["kind"][]
+) {
+    if (__DEV__ && !types.includes(context.kind)) {
+        die(
+            `No annotations were passed to makeObservable, but no decorated members have been found either`
+        )
+    }
 }

@@ -3,7 +3,11 @@ import {
     deepEnhancer,
     die,
     Annotation,
-    MakeResult
+    MakeResult,
+    assert20223DecoratorType,
+    ObservableValue,
+    asObservableObject,
+    $mobx
 } from "../internal"
 
 export function createObservableAnnotation(name: string, options?: object): Annotation {
@@ -11,11 +15,13 @@ export function createObservableAnnotation(name: string, options?: object): Anno
         annotationType_: name,
         options_: options,
         make_,
-        extend_
+        extend_,
+        decorate_20223_
     }
 }
 
 function make_(
+    this: Annotation,
     adm: ObservableObjectAdministration,
     key: PropertyKey,
     descriptor: PropertyDescriptor
@@ -24,6 +30,7 @@ function make_(
 }
 
 function extend_(
+    this: Annotation,
     adm: ObservableObjectAdministration,
     key: PropertyKey,
     descriptor: PropertyDescriptor,
@@ -36,6 +43,42 @@ function extend_(
         this.options_?.enhancer ?? deepEnhancer,
         proxyTrap
     )
+}
+
+function decorate_20223_(this: Annotation, desc, context: ClassAccessorDecoratorContext) {
+    assert20223DecoratorType(context, ["accessor"])
+    const ann = this
+    const { name: key, access, addInitializer } = context
+
+    addInitializer(function () {
+        const adm: ObservableObjectAdministration = asObservableObject(this)[$mobx]
+        const observable = new ObservableValue(
+            access.get(this),
+            ann.options_?.enhancer,
+            __DEV__ ? `${adm.name_}.${key.toString()}` : "ObservableObject.key",
+            false
+        )
+        adm.values_.set(key, observable)
+    })
+
+    return {
+        get() {
+            return this[$mobx].getObservablePropValue_(key)
+        },
+        set(value) {
+            return this[$mobx].setObservablePropValue_(key, value)
+        }
+        // init(value) {
+        //     const adm: ObservableObjectAdministration = asObservableObject(this)[$mobx]
+        //     const observable = new ObservableValue(
+        //         value,
+        //         ann.options_?.enhancer,
+        //         __DEV__ ? `${adm.name_}.${key.toString()}` : "ObservableObject.key",
+        //         false
+        //     )
+        //     adm.values_.set(key, observable)
+        // }
+    }
 }
 
 function assertObservableDescriptor(

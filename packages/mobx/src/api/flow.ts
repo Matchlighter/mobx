@@ -7,7 +7,8 @@ import {
     isStringish,
     storeAnnotation,
     createFlowAnnotation,
-    createDecoratorAnnotation
+    createDecoratorAnnotation,
+    is20223Decorator
 } from "../internal"
 
 export const FLOW = "flow"
@@ -37,6 +38,11 @@ const flowBoundAnnotation = createFlowAnnotation("flow.bound", { bound: true })
 
 export const flow: Flow = Object.assign(
     function flow(arg1, arg2?) {
+        // @flow (2022.3 Decorators)
+        if (is20223Decorator(arg2)) {
+            flowAnnotation.decorate_20223_(arg1, arg2)
+            return
+        }
         // @flow
         if (isStringish(arg2)) {
             return storeAnnotation(arg1, arg2, flowAnnotation)

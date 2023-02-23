@@ -29,7 +29,8 @@ import {
     assign,
     isStringish,
     createObservableAnnotation,
-    createAutoAnnotation
+    createAutoAnnotation,
+    is20223Decorator
 } from "../internal"
 
 export const OBSERVABLE = "observable"
@@ -95,6 +96,12 @@ export function getEnhancerFromAnnotation(annotation?: Annotation): IEnhancer<an
  * @param v the value which should become observable.
  */
 function createObservable(v: any, arg2?: any, arg3?: any) {
+    // @observable someProp; (2022.3 Decorators)
+    if (is20223Decorator(arg2)) {
+        observableAnnotation.decorate_20223_(v, arg2)
+        return
+    }
+
     // @observable someProp;
     if (isStringish(arg2)) {
         storeAnnotation(v, arg2, observableAnnotation)
